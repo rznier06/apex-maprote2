@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Untitled</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="stylesheet" href="/style.css">
+  </head>
+
+  <body>
+    <!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>24時間マップサイクル</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #ff4a4a;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        /* リアルタイム表示エリア */
+        .live-panel {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        }
+        .live-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #ffcccc;
+            margin-bottom: 5px;
+        }
+        .live-map {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .live-countdown {
+            font-size: 16px;
+            color: #ffffff;
+            background-color: rgba(0, 0, 0, 0.2);
+            display: inline-block;
+            padding: 6px 15px;
+            border-radius: 20px;
+        }
+
+        /* 日付ごとのグループ */
+        .day-group {
+            margin-bottom: 30px;
+        }
+        .date-header {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ff4a4a;
+            border-bottom: 2px solid #444;
+            padding-bottom: 5px;
+            margin-bottom: 12px;
+        }
+        
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .slot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .slot.active {
+            transform: scale(1.02);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+            border: 2px solid #fff;
+        }
+        .slot.active::after {
+            content: "NOW";
+            background-color: #ff4a4a;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+        .time {
+            font-size: 16px;
+            color: #eee;
+            font-weight: 500;
+        }
+        .map-name {
+            font-weight: bold;
+            font-size: 20px;
+        }
+        .bg-e { background-color: #2c3e50; border-left: 6px solid #3498db; }
+        .bg-sp { background-color: #1e3d2f; border-left: 6px solid #2ecc71; }
+        .bg-we { background-color: #4a2711; border-left: 6px solid #e67e22; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>マップサイクル</h1>
+    
+    <!-- 現在の状況 -->
+    <div class="live-panel">
+        <div class="live-title">CURRENT MAP</div>
+        <div class="live-map" id="current-map">確認中...</div>
+        <div class="live-countdown" id="countdown">残り時間: --分--秒</div>
+    </div>
+    
+    <!-- 今日と明日のスケジュール表示エリア -->
+    <div id="schedule-container"></div>
+</div>
+
+<script>
+    const MAPS = ["E", "ストポ", "ワールドエッジ"];
+    const CYCLE_MS = 4.5 * 60 * 60 * 1000; // 4時間半
+
+    // 基準時間 (7月20日 02:00 = E)
+    const BASE_TIME = new Date(2026, 6, 20, 2, 0, 0).getTime(); 
+
+    function formatTime(date) {
+        const h = String(date.getHours()).padStart(2, '0');
+        const m = String(date.getMinutes()).padStart(2, '0');
+        return `${h}:${m}`;
+    }
+
+    function updateCycle() {
+        const now = new Date();
+        const nowMs = now.getTime();
+
+        // 1. 現在のマップと残り時間の計算
+        const msSinceBase = nowMs - BASE_TIME;
+        let currentCycleIndex = Math.floor(msSinceBase / CYCLE_MS);
+        let nextCycleTimeMs = BASE_TIME + (currentCycleIndex + 1) * CYCLE_MS;
+        
+        let mapIndex = currentCycleIndex % MAPS.length;
+        if (mapIndex < 0) mapIndex += MAPS.length;
+        const currentMap = MAPS[mapIndex];
+
+        // カウントダウン
+        const diffMs = nextCycleTimeMs - nowMs;
+        const diffSecTotal = Math.floor(diffMs / 1000);
+        const diffMinTotal = Math.floor(diffSecTotal / 60);
+        const h = Math.floor(diffMinTotal / 60);
+        const m = diffMinTotal % 60;
+        const s = diffSecTotal % 60;
+
+        let countdownText = `次のマップまで: `;
+        if (h > 0) countdownText += `${h}時間`;
+        countdownText += `${m}分${s}秒`;
+
+        document.getElementById('current-map').innerText = currentMap;
+        document.getElementById('countdown').innerText = countdownText;
+
+        // 2. 「今日」と「明日」のタイムラインを生成
+        let containerHtml = "";
+        const weeks = ['日', '月', '火', '水', '木', '金', '土'];
+
+        for (let i = 0; i < 2; i++) {
+            // i=0なら今日、i=1なら明日
+            const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+            const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0).getTime();
+            const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+
+            const dateLabel = `${i === 0 ? '今日' : '明日'}：${targetDate.getMonth() + 1}月${targetDate.getDate()}日 (${weeks[targetDate.getDay()]})`;
+
+            let timelineHtml = `<div class="day-group"><div class="date-header">${dateLabel}</div><div class="timeline">`;
+
+            // その日の最初のサイクルが始まる時間を逆算
+            let checkTimeMs = BASE_TIME + Math.floor((startOfDay - BASE_TIME) / CYCLE_MS) * CYCLE_MS;
+
+            while (checkTimeMs < endOfDay) {
+                let cycleIndex = Math.floor((checkTimeMs - BASE_TIME) / CYCLE_MS);
+                let mIdx = cycleIndex % MAPS.length;
+                if (mIdx < 0) mIdx += MAPS.length;
+                
+                const mapName = MAPS[mIdx];
+                const startTime = new Date(checkTimeMs);
+                const endTime = new Date(checkTimeMs + CYCLE_MS);
+
+                if (endTime.getTime() > startOfDay && startTime.getTime() < endOfDay) {
+                    let bgClass = "bg-e";
+                    if (mapName === "ストポ") bgClass = "bg-sp";
+                    if (mapName === "ワールドエッジ") bgClass = "bg-we";
+
+                    const isActive = (nowMs >= startTime.getTime() && nowMs < endTime.getTime()) ? "active" : "";
+
+                    timelineHtml += `
+                        <div class="slot ${bgClass} ${isActive}">
+                            <div class="time">${formatTime(startTime)} ～ ${formatTime(endTime)}</div>
+                            <div class="map-name">${mapName}</div>
+                        </div>
+                    `;
+                }
+                checkTimeMs += CYCLE_MS;
+            }
+            timelineHtml += `</div></div>`;
+            containerHtml += timelineHtml;
+        }
+
+        document.getElementById('schedule-container').innerHTML = containerHtml;
+    }
+
+    setInterval(updateCycle, 1000);
+    updateCycle();
+</script>
+
+</body>
+</html>
+    <script src="/script.js"></script>
+  </body>
+
+</html>
