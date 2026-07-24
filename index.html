@@ -130,6 +130,9 @@
     const MAPS = ["ワールドエッジ", "E", "ストポ"];
     const CYCLE_MS = 4.5 * 60 * 60 * 1000; // 4時間半 (4.5時間)
 
+    // 起点：2026年7月24日 06:30 (ワールドエッジ)
+    const BASE_TIME = new Date(2026, 6, 24, 6, 30, 0).getTime();
+
     function formatTime(date) {
         const h = String(date.getHours()).padStart(2, '0');
         const m = String(date.getMinutes()).padStart(2, '0');
@@ -139,10 +142,6 @@
     function updateCycle() {
         const now = new Date();
         const nowMs = now.getTime();
-
-        // 当日の 06:30 を基準時間(BASE_TIME)として動的に動かす
-        const todayBase = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 30, 0);
-        const BASE_TIME = todayBase.getTime();
 
         // 1. 現在のマップと残り時間の計算
         const msSinceBase = nowMs - BASE_TIME;
@@ -182,17 +181,11 @@
 
             let timelineHtml = `<div class="day-group"><div class="date-header">${dateLabel}</div><div class="timeline">`;
 
-            // その日の最初のサイクル（06:30）から計算を開始
-            const dayBaseTime = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 6, 30, 0).getTime();
-            
-            // 00:00 〜 06:30 の時間帯も含めるため、06:30 からさかのぼって開始位置を決定
-            let checkTimeMs = dayBaseTime;
-            while (checkTimeMs > startOfDay) {
-                checkTimeMs -= CYCLE_MS;
-            }
+            // 起点(2026/7/24 06:30)から連続するサイクルとして、その日の最初の枠の開始時刻を逆算
+            let checkTimeMs = BASE_TIME + Math.floor((startOfDay - BASE_TIME) / CYCLE_MS) * CYCLE_MS;
 
             while (checkTimeMs < endOfDay) {
-                let cycleIndex = Math.floor((checkTimeMs - dayBaseTime) / CYCLE_MS);
+                let cycleIndex = Math.floor((checkTimeMs - BASE_TIME) / CYCLE_MS);
                 let mIdx = cycleIndex % MAPS.length;
                 if (mIdx < 0) mIdx = (mIdx % MAPS.length + MAPS.length) % MAPS.length;
                 
