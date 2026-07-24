@@ -1,3 +1,11 @@
+はい、もちろんです！「今日（今日の日付）の 06:30」を常に自動で計算の起点（＝ワールドエッジ）にするようにコードを修正しました。
+
+これで、いつページを開いてもその日の 06:30〜11:00 が「ワールドエッジ」スタートになり、そこから 4.5 時間ごとに「E」→「ストポ」と綺麗に循環します。
+
+修正版 HTML コード
+以下のコードを丸ごとコピーして、GitHub の index.html に上書き保存してください。
+
+HTML
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -126,12 +134,9 @@
 </div>
 
 <script>
-    // 順番: ワールドエッジ -> E -> ストポ
+    // マップの循環順序
     const MAPS = ["ワールドエッジ", "E", "ストポ"];
-    const CYCLE_MS = 4.5 * 60 * 60 * 1000; // 4時間半
-
-    // 基準時間 (2026年7月20日 06:30 = ワールドエッジ)
-    const BASE_TIME = new Date(2026, 6, 20, 6, 30, 0).getTime(); 
+    const CYCLE_MS = 4.5 * 60 * 60 * 1000; // 4時間半 (4.5時間)
 
     function formatTime(date) {
         const h = String(date.getHours()).padStart(2, '0');
@@ -142,6 +147,10 @@
     function updateCycle() {
         const now = new Date();
         const nowMs = now.getTime();
+
+        // 当日の 06:30 を基準時間(BASE_TIME)として動的に動かす
+        const todayBase = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 30, 0);
+        const BASE_TIME = todayBase.getTime();
 
         // 1. 現在のマップと残り時間の計算
         const msSinceBase = nowMs - BASE_TIME;
@@ -181,11 +190,17 @@
 
             let timelineHtml = `<div class="day-group"><div class="date-header">${dateLabel}</div><div class="timeline">`;
 
-            // その日の最初のサイクルが始まる時間を逆算
-            let checkTimeMs = BASE_TIME + Math.floor((startOfDay - BASE_TIME) / CYCLE_MS) * CYCLE_MS;
+            // その日の最初のサイクル（06:30）から計算を開始
+            const dayBaseTime = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 6, 30, 0).getTime();
+            
+            // 00:00 〜 06:30 の時間帯も含めるため、06:30 からさかのぼって開始位置を決定
+            let checkTimeMs = dayBaseTime;
+            while (checkTimeMs > startOfDay) {
+                checkTimeMs -= CYCLE_MS;
+            }
 
             while (checkTimeMs < endOfDay) {
-                let cycleIndex = Math.floor((checkTimeMs - BASE_TIME) / CYCLE_MS);
+                let cycleIndex = Math.floor((checkTimeMs - dayBaseTime) / CYCLE_MS);
                 let mIdx = cycleIndex % MAPS.length;
                 if (mIdx < 0) mIdx = (mIdx % MAPS.length + MAPS.length) % MAPS.length;
                 
